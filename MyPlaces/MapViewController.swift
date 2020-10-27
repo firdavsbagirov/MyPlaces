@@ -50,10 +50,12 @@ class MapViewController: UIViewController {
     
     
     @IBAction func centerViewOnUserLocation() {
-        
         showUserLocation()
-            
-        
+    }
+    
+    @IBAction func doneButtonPressed() {
+        mapViewControllerDelegate?.getAddrress(addressLabel.text)
+        dismiss(animated: true, completion: nil)
     }
     
     @IBAction func closeVC() {
@@ -64,11 +66,6 @@ class MapViewController: UIViewController {
         getDirections()
     }
     
-    
-    @IBAction func doneButtonPressed() {
-        mapViewControllerDelegate?.getAddrress(addressLabel.text)
-        dismiss(animated: true, completion: nil)
-    }
     
     // Positioning map on the place location if segue is showPlace
     private func setupMapView() {
@@ -84,12 +81,7 @@ class MapViewController: UIViewController {
         }
     }
     
-    private func resetMapView(withNew directions: MKDirections) {
-        mapView.removeOverlays(mapView.overlays)
-        directionsArray.append(directions)
-        let _ = directionsArray.map { $0.cancel()}
-        directionsArray.removeAll()
-    }
+   
     
     //Positioining map on the place location
     //CLGeocoder - provides services for converting between a coordinate (specified as a latitude and longitude) and the user-friendly representation of that coordinate
@@ -120,7 +112,7 @@ class MapViewController: UIViewController {
             self.mapView.selectAnnotation(annotation, animated: true)
         }
     }
-    
+    // Checking if location services are enable on the device
     private func checkLocationServices() {
         if CLLocationManager.locationServicesEnabled() {
             setupLocationManager()
@@ -137,7 +129,7 @@ class MapViewController: UIViewController {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
     }
-    // Positioining the map on users location if all permissions enabled
+    // Checking if app is authorized to use location services
     internal func locationManagerDidChangeAuthorization(_ locationManager: CLLocationManager) {
             let accuracyAuthorization = locationManager.accuracyAuthorization
             switch accuracyAuthorization {
@@ -155,7 +147,7 @@ class MapViewController: UIViewController {
                 print("New case is available")
             }
         }
-    // Center map on users location
+    // Focuse map on users location
     private func showUserLocation(){
         if let location = locationManager.location?.coordinate {
             let region = MKCoordinateRegion(center: location,
@@ -165,21 +157,8 @@ class MapViewController: UIViewController {
             mapView.setRegion(region, animated: true)
         }
     }
-    
-    private func startTrackingUserLocation() {
-        guard let previousLocation = previousLocation else { return }
-        let center = getCenterLocation(for: mapView)
-        guard center.distance(from: previousLocation) > 50 else { return }
-        self.previousLocation = center
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            self.showUserLocation()
-
-        }
-        
-        
-    }
-    
+   
+    // Building a route from users location to the place
     private func getDirections() {
         
         guard let location = locationManager.location?.coordinate else {
@@ -221,7 +200,7 @@ class MapViewController: UIViewController {
             }
         }
     }
-    
+    // Configuring request for the route
     private func createDirectionsRequest( from coordinate: CLLocationCoordinate2D) -> MKDirections.Request? {
         
         guard let destinationCoordinate = placeCoordinate else { return nil }
@@ -235,6 +214,29 @@ class MapViewController: UIViewController {
         request.requestsAlternateRoutes = true
         
         return request
+    }
+    
+    
+    // Changing displayed area of the map according to users movement
+    private func startTrackingUserLocation() {
+        guard let previousLocation = previousLocation else { return }
+        let center = getCenterLocation(for: mapView)
+        guard center.distance(from: previousLocation) > 50 else { return }
+        self.previousLocation = center
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            self.showUserLocation()
+
+        }
+        
+        
+    }
+    // Deleting all previous directions before getting new one
+    private func resetMapView(withNew directions: MKDirections) {
+        mapView.removeOverlays(mapView.overlays)
+        directionsArray.append(directions)
+        let _ = directionsArray.map { $0.cancel()}
+        directionsArray.removeAll()
     }
     
     //Converting location of the center to the address
